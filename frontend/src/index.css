@@ -238,6 +238,23 @@ math-virtual-keyboard[theme="apple-dark"] {
   color: var(--text-main);
 }
 
+.math-display.text-display {
+  font-size: 20px;
+  line-height: 1.55;
+  text-align: left;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.math-display.text-display p {
+  max-width: 100%;
+  margin: 0;
+}
+
+.math-display.text-display .katex {
+  font-size: 1.05em;
+}
+
 .input-section {
   margin-bottom: 32px;
 }
@@ -262,6 +279,34 @@ math-virtual-keyboard[theme="apple-dark"] {
   background-color: var(--bg-surface);
   transition: border-color 0.2s, box-shadow 0.2s;
   --contains-highlight-background-color: transparent;
+}
+
+.structured-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.structured-answer-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.answer-label {
+  min-width: 64px;
+  font-size: 22px;
+  color: var(--text-main);
+  text-align: right;
+}
+
+.structured-answer-row .math-field-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.structured-answer-row:not(:has(.answer-label)) {
+  display: block;
 }
 
 .math-field-wrapper math-field:focus-within {
@@ -350,5 +395,22 @@ math-field::part(virtual-keyboard-toggle) { display: flex !important; }
   }
   .task-card {
     padding: 24px 16px;
+  }
+  .math-display {
+    font-size: 0.8em;
+    padding: 12px 8px;
+  }
+  .math-display.text-display {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+  .structured-answer-row {
+    align-items: stretch;
+    gap: 6px;
+  }
+  .answer-label {
+    min-width: 52px;
+    font-size: 18px;
+    padding-top: 12px;
   }
 }

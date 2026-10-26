@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import 'katex/dist/katex.min.css';
-import { BlockMath } from 'react-katex';
+import { BlockMath, InlineMath } from 'react-katex';
 import 'mathlive';
 
 function App() {
@@ -11,7 +11,31 @@ function App() {
   const [solutionInfo, setSolutionInfo] = useState('');
   
   // A MathLive beviteli mező hivatkozása
-  const mfRef = useRef(null);
+  const answerRefs = useRef([]);
+
+  const renderTaskText = (text) => text.split(/(-?\d+\/\d+)/g).map((part, index) => {
+    const fraction = part.match(/^(-?)(\d+)\/(\d+)$/);
+    if (!fraction) return <React.Fragment key={index}>{part}</React.Fragment>;
+
+    const [, sign, numerator, denominator] = fraction;
+    return (
+      <React.Fragment key={index}>
+        <InlineMath math={`${sign === '-' ? '-' : ''}\\frac{${numerator}}{${denominator}}`} />
+      </React.Fragment>
+    );
+  });
+
+  const htmlTaskTypes = [
+    'arithmeticSequence',
+    'geometricSequence',
+    'priceChange',
+    'linearFunction',
+    'wordLinearSystem',
+  ];
+
+  const plainAnswerLabelTypes = [
+    'functionRange',
+  ];
 
   const generateTask = async () => {
     setIsLoading(true);
@@ -21,9 +45,9 @@ function App() {
       const response = await fetch(`http://localhost:8000/generate/${problemType}`);
       const data = await response.json();
       setTaskData(data);
-      if (mfRef.current) {
-        mfRef.current.value = ''; // Mező ürítése új feladatnál
-      }
+      answerRefs.current.forEach((field) => {
+        if (field) field.value = '';
+      });
     } catch (error) {
       setFeedback('Hiba a szerverhez való csatlakozáskor.');
     }
@@ -33,7 +57,10 @@ function App() {
   const checkAnswer = async () => {
     if (!taskData) return;
     
-    const studentAnswer = mfRef.current.getValue('ascii-math'); 
+    const fieldCount = taskData.answer_fields ? taskData.answer_fields.length : 1;
+    const studentAnswer = answerRefs.current.slice(0, fieldCount)
+      .map((field) => field?.getValue('ascii-math') || '')
+      .join(', ');
     
     try {
       const response = await fetch('http://localhost:8000/validate', {
@@ -72,13 +99,13 @@ function App() {
   };
 
   useEffect(() => {
-    const mf = mfRef.current;
-    
     const handleKeyDown = (e) => {
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         let allowedChars = "";
-        if (problemType === 'intervalProblem') {
+        if (problemType === 'intervalProblem' || problemType === 'functionRange') {
           allowedChars = "0123456789()[]Uu-rR,";
+        } else if (problemType === 'priceChange') {
+          allowedChars = "0123456789%-,";
         } else {
           allowedChars = "0123456789xyzXYZ+-*/=.,><()^";
         }
@@ -87,22 +114,23 @@ function App() {
         e.stopImmediatePropagation();
         
         if (allowedChars.includes(e.key)) {
-          mf.insert(e.key === '*' ? '\\times' : e.key);
+          e.currentTarget.insert(e.key === '*' ? '\\times' : e.key);
         }
       }
     };
 
-    if (mf) {
+    const fields = answerRefs.current.filter(Boolean);
+    fields.forEach((mf) => {
       mf.mathVirtualKeyboardPolicy = "auto";
       mf.smartFence = false;
       mf.smartMode = false;
       mf.smartSuperscript = true;
       mf.inlineShortcuts = {};
       mf.addEventListener("keydown", handleKeyDown, { capture: true });
-    }
+    });
 
     if (window.mathVirtualKeyboard) {
-      if (problemType === 'intervalProblem') {
+      if (problemType === 'intervalProblem' || problemType === 'functionRange') {
         window.mathVirtualKeyboard.layouts = [
           {
             label: 'Intervallum',
@@ -138,6 +166,38 @@ function App() {
                 { class: 'action', label: ',', insert: ',' },
                 { class: 'tex', label: '-', key: '-' },
                 { class: 'tex', label: '', key: '' }
+              ]
+            ]
+          }
+        ];
+      } else if (problemType === 'priceChange') {
+        window.mathVirtualKeyboard.layouts = [
+          {
+            label: 'Százalék',
+            rows: [
+              [
+                { class: 'action', label: '7', key: '7' },
+                { class: 'action', label: '8', key: '8' },
+                { class: 'action', label: '9', key: '9' },
+                { class: 'tex', label: '%', key: '%' }
+              ],
+              [
+                { class: 'action', label: '4', key: '4' },
+                { class: 'action', label: '5', key: '5' },
+                { class: 'action', label: '6', key: '6' },
+                { class: 'tex', label: ',', key: ',' }
+              ],
+              [
+                { class: 'action', label: '1', key: '1' },
+                { class: 'action', label: '2', key: '2' },
+                { class: 'action', label: '3', key: '3' },
+                { class: 'tex', label: '-', key: '-' }
+              ],
+              [
+                { class: 'action', label: '0', key: '0' },
+                { class: 'tex', label: '', key: '' },
+                { class: 'tex', label: '', key: '' },
+                { class: 'action', label: '⌫', command: 'deleteBackward' }
               ]
             ]
           }
@@ -189,9 +249,9 @@ function App() {
       ];      }    }
 
     return () => {
-      if (mf) {
+      fields.forEach((mf) => {
         mf.removeEventListener("keydown", handleKeyDown, { capture: true });
-      }
+      });
     };
   }, [taskData, problemType]);
   
@@ -218,6 +278,17 @@ function App() {
               <option value="linearEquation">Lineáris egyenlet</option>
               <option value="intervalProblem">Intervallum</option>
               <option value="linearSystem">Egyenletrendszer</option>
+              <option value="arithmeticSequence">Számtani sorozat</option>
+              <option value="geometricSequence">Mértani sorozat</option>
+              <option value="priceChange">Százalékos árváltozás</option>
+              <option value="linearFunction">Lineáris függvény két pontból</option>
+              <option value="wordLinearSystem">Szöveges egyenletrendszer</option>
+              <option value="powerEquation">Hatványazonosságos egyenlet</option>
+              <option value="logEquation">Logaritmusos egyenlet</option>
+              <option value="exponentialEquation">Exponenciális egyenlet</option>
+              <option value="radicalEquation">Gyökös egyenlet</option>
+              <option value="radicalFractionEquation">Gyökös tört-egyenlet</option>
+              <option value="functionRange">Függvény ÉT és ÉK</option>
             </select>
           </div>
           <button 
@@ -234,15 +305,48 @@ function App() {
           <div className="task-card">
             <h2 className="task-instruction">{taskData.instruction}</h2>
             
-            <div className="math-display">
-              <BlockMath math={taskData.latex} />
+            <div className={`math-display ${htmlTaskTypes.includes(taskData.type) ? 'text-display' : ''}`}>
+              {htmlTaskTypes.includes(taskData.type) ? (
+                <p>{renderTaskText(taskData.text)}</p>
+              ) : (
+                <BlockMath math={taskData.latex} />
+              )}
             </div>
 
             <div className="input-section">
               <label className="input-label">Írd be a megoldásod:</label>
-              <div className="math-field-wrapper">
-                <math-field ref={mfRef}></math-field>
-              </div>
+              {taskData.answer_fields ? (
+                <div className="structured-answer">
+                  {taskData.answer_fields.map((field, index) => (
+                    <div className="structured-answer-row" key={field.name}>
+                      {field.label && (
+                        <span className="answer-label">
+                          {taskData.type === 'wordLinearSystem' || plainAnswerLabelTypes.includes(taskData.type) ? (
+                            field.label
+                          ) : (
+                            <InlineMath math={field.label} />
+                          )}
+                        </span>
+                      )}
+                      <div className="math-field-wrapper">
+                        <math-field
+                          ref={(element) => {
+                            answerRefs.current[index] = element;
+                          }}
+                        ></math-field>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="math-field-wrapper">
+                  <math-field
+                    ref={(element) => {
+                      answerRefs.current[0] = element;
+                    }}
+                  ></math-field>
+                </div>
+              )}
             </div>
 
             <div className="action-buttons">

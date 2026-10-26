@@ -104,6 +104,9 @@ class LinearEquation():
         if debug:
             print(f"Megoldás: x = {self.solution}")
         return self.solution
+
+    def get_answer_fields(self):
+        return [{"label": "x =", "name": "x"}]
     
     def validateSolution(self, student_solution):
         """A diák megoldásának validálása."""
@@ -184,4 +187,3 @@ class LinearEquation():
         latex_str = f"{left_str} = {right_str}"
 
         return instruction, latex_str
-

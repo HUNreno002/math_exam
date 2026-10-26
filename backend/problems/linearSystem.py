@@ -76,6 +76,12 @@ class LinearSystem():
 
     def getSolution(self, debug=False):
         return self.solution
+
+    def get_answer_fields(self):
+        return [
+            {"label": "x =", "name": "x"},
+            {"label": "y =", "name": "y"},
+        ]
     
     def validateSolution(self, student_solution):
         try:

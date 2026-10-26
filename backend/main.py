@@ -10,6 +10,17 @@ from problems.radicalRationalization import RadicalRationalization
 from problems.intervalProblem import IntervalProblem
 from problems.linearEquation import LinearEquation
 from problems.linearSystem import LinearSystem
+from problems.arithmeticSequence import ArithmeticSequence
+from problems.geometricSequence import GeometricSequence
+from problems.priceChange import PriceChange
+from problems.linearFunction import LinearFunction
+from problems.wordLinearSystem import WordLinearSystem
+from problems.powerEquation import PowerEquation
+from problems.logEquation import LogEquation
+from problems.exponentialEquation import ExponentialEquation
+from problems.radicalEquation import RadicalEquation
+from problems.radicalFractionEquation import RadicalFractionEquation
+from problems.functionRange import FunctionRange
 
 app = FastAPI()
 
@@ -55,6 +66,39 @@ def generate_task(problem_type: str):
     elif problem_type == "linearSystem":
         prob = LinearSystem()
         prob.generateTask()
+    elif problem_type == "arithmeticSequence":
+        prob = ArithmeticSequence()
+        prob.generateTask()
+    elif problem_type == "geometricSequence":
+        prob = GeometricSequence()
+        prob.generateTask()
+    elif problem_type == "priceChange":
+        prob = PriceChange()
+        prob.generateTask()
+    elif problem_type == "linearFunction":
+        prob = LinearFunction()
+        prob.generateTask()
+    elif problem_type == "wordLinearSystem":
+        prob = WordLinearSystem()
+        prob.generateTask()
+    elif problem_type == "powerEquation":
+        prob = PowerEquation()
+        prob.generateTask()
+    elif problem_type == "logEquation":
+        prob = LogEquation()
+        prob.generateTask()
+    elif problem_type == "exponentialEquation":
+        prob = ExponentialEquation()
+        prob.generateTask()
+    elif problem_type == "radicalEquation":
+        prob = RadicalEquation()
+        prob.generateTask()
+    elif problem_type == "radicalFractionEquation":
+        prob = RadicalFractionEquation()
+        prob.generateTask()
+    elif problem_type == "functionRange":
+        prob = FunctionRange()
+        prob.generateTask()
     else:
         raise HTTPException(status_code=400, detail="Ismeretlen feladattípus")
 
@@ -69,8 +113,20 @@ def generate_task(problem_type: str):
     
     return {
         "session_id": session_id,
+        "type": problem_type,
         "instruction": instruction,
-        "latex": latex_str
+        "latex": latex_str,
+        "text": prob.get_text() if hasattr(prob, "get_text") else None,
+        "answer_format": (
+            prob.get_answer_format()
+            if hasattr(prob, "get_answer_format")
+            else None
+        ),
+        "answer_fields": (
+            prob.get_answer_fields()
+            if hasattr(prob, "get_answer_fields")
+            else None
+        ),
     }
 
 @app.post("/validate")
@@ -107,6 +163,31 @@ def get_solution(session_id: str):
             ans_latex = rf"x^{{{sp.latex(exponent)}}}"
         elif prob_type == "fractionSimplification":
             ans_latex = sp.latex(solution)
+        elif prob_type == "priceChange":
+            ans_latex = prob_instance.get_solution_latex()
+        elif prob_type == "radicalFractionEquation":
+            ans_latex = r"\varnothing"
+        elif prob_type in (
+            "powerEquation",
+            "logEquation",
+            "exponentialEquation",
+            "radicalEquation",
+        ):
+            ans_latex = rf"x = {sp.latex(solution)}"
+        elif prob_type == "functionRange":
+            domain, value_range = solution
+            ans_latex = (
+                rf"\text{{Értelmezési tartomány: }}{domain},\quad "
+                rf"\text{{Értékkészlet: }}{value_range}"
+            )
+        elif prob_type == "wordLinearSystem":
+            first_price, second_price = solution
+            first_label = prob_instance.item_a.capitalize()
+            second_label = prob_instance.item_b.capitalize()
+            ans_latex = (
+                rf"\text{{{first_label} ára}} = {sp.latex(first_price)}, \quad "
+                rf"\text{{{second_label} ára}} = {sp.latex(second_price)}"
+            )
         elif "linearEquation" in prob_type:
             # Csak egy szám
             ans_latex = rf"x = {str(solution).rstrip('0').rstrip('.') if '.' in str(solution) else solution}"
@@ -116,6 +197,11 @@ def get_solution(session_id: str):
             sx = str(x).rstrip('0').rstrip('.') if '.' in str(x) else x
             sy = str(y).rstrip('0').rstrip('.') if '.' in str(y) else y
             ans_latex = rf"x = {sx}, \quad y = {sy}"
+        elif prob_type == "arithmeticSequence":
+            first, second = solution
+            ans_latex = rf"a_{{19}} = {sp.latex(first)}, \quad d = {sp.latex(second)}"
+        elif prob_type in ("geometricSequence",):
+            ans_latex = sp.latex(solution)
         elif prob_type == "intervalProblem":
             ans_latex = sp.latex(solution)
         else:
